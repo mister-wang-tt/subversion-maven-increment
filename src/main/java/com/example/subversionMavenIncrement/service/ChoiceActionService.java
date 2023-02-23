@@ -25,7 +25,9 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 /**
- * @author wht
+ * 逻辑处理
+ *
+ * @author 蚕豆的生活
  */
 public class ChoiceActionService {
 

@@ -10,7 +10,9 @@ import javax.swing.*;
 import java.io.IOException;
 
 /**
- * @author wht
+ * 表单弹出框
+ *
+ * @author 蚕豆的生活
  */
 public class SvnFormDialog extends DialogWrapper {
 

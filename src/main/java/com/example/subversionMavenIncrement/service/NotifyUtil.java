@@ -6,6 +6,11 @@ import com.intellij.openapi.project.Project;
 
 import javax.annotation.Nullable;
 
+/**
+ * 右下角通知气泡工具类
+ *
+ * @author 蚕豆的生活
+ */
 public class NotifyUtil {
 
     /**

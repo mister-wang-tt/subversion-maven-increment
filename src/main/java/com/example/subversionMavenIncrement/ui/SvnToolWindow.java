@@ -19,7 +19,9 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 /**
- * @author wht
+ * GUI实现类
+ *
+ * @author 蚕豆的生活
  */
 public class SvnToolWindow {
     private JPanel panel;
@@ -49,6 +51,11 @@ public class SvnToolWindow {
             // CallerRunsPolicy策略确保竞争失败的线程也能被执行
             new ThreadPoolExecutor.CallerRunsPolicy());
 
+    /**
+     * 初始化
+     *
+     * @param svnFormDialog
+     */
     public SvnToolWindow(SvnFormDialog svnFormDialog) {
 
         // 确定监听
@@ -73,6 +80,13 @@ public class SvnToolWindow {
         cancel.addActionListener(e -> svnFormDialog.disposeIfNeeded());
     }
 
+    /**
+     * 初始化表单数据
+     *
+     * @param list
+     * @param project
+     * @param dataContext
+     */
     public void currentDateTime(List<String> list, Project project, DataContext dataContext) {
 
         this.project = project;
@@ -80,6 +94,8 @@ public class SvnToolWindow {
 
         dataModel.setRowData(list);
         table.setModel(dataModel);
+
+        // 设置列头宽度
         TableColumn column = table.getColumnModel().getColumn(0);
         column.setPreferredWidth(80);
         column.setMaxWidth(80);

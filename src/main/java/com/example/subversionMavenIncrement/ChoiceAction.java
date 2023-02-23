@@ -13,7 +13,7 @@ import java.io.IOException;
 /**
  * 菜单选择
  *
- * @author wanght
+ * @author 蚕豆的生活
  */
 public class ChoiceAction extends AnAction {
 

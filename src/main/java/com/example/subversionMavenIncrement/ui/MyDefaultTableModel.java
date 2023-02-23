@@ -6,7 +6,7 @@ import java.util.List;
 /**
  * JTable组件
  *
- * @author wht
+ * @author 蚕豆的生活
  */
 public class MyDefaultTableModel extends DefaultTableModel {
 
