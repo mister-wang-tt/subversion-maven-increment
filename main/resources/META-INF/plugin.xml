@@ -1,0 +1,55 @@
+<!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
+<idea-plugin>
+    <!-- Unique identifier of the plugin. It should be FQN. It cannot be changed between the plugin versions. -->
+    <id>com.example.SubversionMavenIncrement</id>
+
+    <!-- Public plugin name should be written in Title Case.
+         Guidelines: https://plugins.jetbrains.com/docs/marketplace/plugin-overview-page.html#plugin-name -->
+    <name>SubversionMavenIncrement</name>
+
+    <!-- A displayed Vendor name or Organization ID displayed on the Plugins Page. -->
+    <vendor email="734310024@qq.com">wang</vendor>
+
+    <!-- Description of the plugin displayed on the Plugin Page and IDE Plugin Manager.
+         Simple HTML elements (text formatting, paragraphs, and lists) can be added inside of <![CDATA[ ]]> tag.
+         Guidelines: https://plugins.jetbrains.com/docs/marketplace/plugin-overview-page.html#plugin-description -->
+    <description><![CDATA[
+    <h2>1.0.0</h2><br>
+    <em>Subversion Maven Increment The upgrade package is based on the old project monomer maven+war package project. The upgrade package can be automatically generated according to the records submitted by SVN</em><br>
+    <a href="https://github.com/mister-wang-tt/subversion-maven-increment">gitHub</a>
+        <h3>reliance</h3>
+    <div><em>1. Need to rely on SVN and MAVEN</em></div>
+    <div><em>2. It is required that SVN and MAVEN are installed on the current computer and environment variables are configured</em></div>
+        <h3>instructions</h3>
+        <ul>
+            <li>
+                click Subversion -> Show History -> Maven Increment
+            </li>
+            <li>
+                The window of selecting svn data generation will pop up, and click OK to start packaging
+            </li>
+            <li>
+                After packaging starts, it will be packaged asynchronously. After packaging is completed, it will be prompted to complete packaging, and the packaged update package will be generated under the target/list folder
+            </li>
+        </ul>
+  ]]></description>
+
+    <!-- Product and plugin compatibility requirements.
+         Read more: https://plugins.jetbrains.com/docs/intellij/plugin-compatibility.html -->
+    <depends>com.intellij.modules.platform</depends>
+
+    <!-- Extension points defined by the plugin.
+         Read more: https://plugins.jetbrains.com/docs/intellij/plugin-extension-points.html -->
+    <extensions defaultExtensionNs="com.intellij">
+        <notificationGroup id="Subversion Maven Increment" displayType="BALLOON" key="notification.group.name"/>
+    </extensions>
+
+    <!-- action配置，按钮展示在哪里需要在这配置 -->
+    <actions>
+        <action class="com.example.subversionMavenIncrement.ChoiceAction" icon="AllIcons.General.CopyHovered" id="ChoiceAction" text="Maven Increment" description="根据svn提交记录,使用maven打包更新包" >
+            <!-- 将插件放在History菜单中的first位置。 -->
+            <add-to-group group-id="VcsHistoryActionsGroup" anchor="first" />
+        </action>
+    </actions>
+
+</idea-plugin>
