@@ -1,6 +1,6 @@
 package com.example.subversionMavenIncrement.ui;
 
-import com.example.subversionMavenIncrement.service.ChoiceActionService;
+import com.example.subversionMavenIncrement.service.CheckUpService;
 import com.intellij.openapi.actionSystem.DataContext;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.DialogWrapper;
@@ -14,17 +14,17 @@ import java.io.IOException;
  *
  * @author 蚕豆的生活
  */
-public class SvnFormDialog extends DialogWrapper {
+public class ComAddressFormDialog extends DialogWrapper {
 
-    private final SvnToolWindow svnToolWindow = new SvnToolWindow();
+    private final CompleteAddress completeAddress;
 
-    public SvnFormDialog(@Nullable Project project, DataContext dataContext) throws IOException, InterruptedException {
+    public ComAddressFormDialog(String path, @Nullable Project project, DataContext dataContext, CheckUpService checkUpService) throws IOException, InterruptedException {
         super(true);
 
-        svnToolWindow.currentDateTime(ChoiceActionService.findSvnNotes(dataContext), project, dataContext);
+        completeAddress = new CompleteAddress(path, project, dataContext, checkUpService);
 
         //设置会话框标题
-        setTitle("Select Svn Data");
+        setTitle("获取地址(Obtain Address)");
         //触发一下init方法，否则swing样式将无法展示在会话框
         init();
     }
@@ -43,7 +43,7 @@ public class SvnFormDialog extends DialogWrapper {
      * 开始任务
      */
     public void okTaskStart(){
-        svnToolWindow.okTaskStart();
+        completeAddress.ok();
     }
 
     /**
@@ -53,6 +53,6 @@ public class SvnFormDialog extends DialogWrapper {
      */
     @Override
     protected JComponent createCenterPanel() {
-        return svnToolWindow.getContent();
+        return completeAddress.getContent();
     }
 }

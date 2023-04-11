@@ -1,6 +1,7 @@
 package com.example.subversionMavenIncrement.service;
 
 import com.example.subversionMavenIncrement.run.ExecuteCommand;
+import com.example.subversionMavenIncrement.util.NotifyUtil;
 import com.example.subversionMavenIncrement.util.WarUtil;
 import com.intellij.openapi.actionSystem.DataContext;
 import com.intellij.openapi.project.Project;
@@ -70,25 +71,25 @@ public class ChoiceActionService {
      * @param svnSubmitData
      * @param isMvnRadioButton
      */
-    public static void backEnd(Project project, DataContext dataContext, List<String> svnSubmitData, Boolean isMvnRadioButton){
+    public static void backEnd(Project project, DataContext dataContext, List<String> svnSubmitData, Boolean isMvnRadioButton) {
 
         VirtualFile virtualFile = VcsContextUtil.selectedFile(dataContext);
         FilePath filePathOn = new VcsContextFactoryImpl().createFilePathOn(virtualFile);
 
         // 是否使用maven打包
-        if(isMvnRadioButton){
+        if (isMvnRadioButton) {
             try {
                 ExecuteCommand.carrOut(filePathOn.getIOFile(), "mvn clean package",
                         "-Dmaven.test.skip=true");
-                NotifyUtil.notifyInfo(project, "Subversion Maven Increment maven打包完成,请稍后！");
+                NotifyUtil.notifyInfo(project, "maven打包完成,请稍后！");
             } catch (IOException | InterruptedException e) {
-                Messages.showMessageDialog(project, "maven打包失败！请检查配置", "提示", Messages.getInformationIcon());
+                NotifyUtil.notifyError(project, "maven打包失败！请检查配置" + Messages.getInformationIcon());
                 throw new RuntimeException(e);
             }
         }
 
         // 先创建临时时文件夹
-        String temporaryFile = filePathOn.getPath() + File.separator + "target";
+        String temporaryFile = CheckUpService.RESOLVE_ADDRESS + File.separator + "target";
         File file = new File(temporaryFile + CO_WAR_PATH);
         file.mkdirs();
 
@@ -99,34 +100,40 @@ public class ChoiceActionService {
             paths.map(Path::toString).filter(f -> f.endsWith(".war"))
                     .forEach(warList::add);
         } catch (IOException e) {
-            Messages.showMessageDialog(project, "查找war包失败", "提示", Messages.getInformationIcon());
+            NotifyUtil.notifyError(project, "查找war包失败" + Messages.getInformationIcon());
             throw new RuntimeException(e);
         }
 
-        if(warList.size() != 1){
-            Messages.showMessageDialog(project, "出错了！maven打包失败", "提示", Messages.getInformationIcon());
+        if (warList.size() != 1) {
+            NotifyUtil.notifyError(project, "出错了！maven打包失败" + Messages.getInformationIcon());
             return;
         }
 
         // 解压war包
         try {
+            File tempFile = new File(temporaryFile + CO_WAR_PATH);
+            tempFile.delete();
+
             WarUtil.unCompressWar(warList.get(0), temporaryFile + CO_WAR_PATH);
         } catch (IOException | ArchiveException e) {
-            Messages.showMessageDialog(project, "解压war包失败！", "提示", Messages.getInformationIcon());
+            NotifyUtil.notifyError(project, "解压war包失败！" + Messages.getInformationIcon());
             throw new RuntimeException(e);
         }
 
         String dist = temporaryFile + File.separator + "dist";
 
+        new File(dist).delete();
+
         try {
             // 只移动 resources 和 src
-            for(String path: svnSubmitData){
+            for (String path : svnSubmitData) {
 
-                for(String fold : PACKAGING_FOLDER){
-                    if(path.contains(fold) && path.contains(".")){
-                        if(!path.contains("application.properties")){
-                            String[] paths = path.split(fold);
-                            paths[1] = paths[1].replace(".java", ".class");
+                for (String fold : PACKAGING_FOLDER) {
+                    if (path.contains(fold) && path.contains(".")) {
+                        String[] paths = path.split(fold);
+                        paths[1] = paths[1].replace(".java", ".class");
+
+                        if (!new File(dist + WEB_INF_CASS_PATH + paths[1]).exists()) {
                             Files.createDirectories(Path.of(dist + WEB_INF_CASS_PATH + paths[1]).getParent());
                             Files.copy(Path.of(temporaryFile + CO_WAR_PATH + WEB_INF_CASS_PATH + paths[1]),
                                     Path.of(dist + WEB_INF_CASS_PATH + paths[1]));
@@ -134,12 +141,12 @@ public class ChoiceActionService {
                     }
                 }
             }
-        }catch (IOException e) {
-            Messages.showMessageDialog(project, "生成更新包失败！", "提示", Messages.getInformationIcon());
+        } catch (IOException e) {
+            NotifyUtil.notifyError(project, "生成更新包失败！" + Messages.getInformationIcon());
             throw new RuntimeException(e);
         }
 
-        NotifyUtil.notifyInfo(project, "Subversion Maven Increment 打包成功,请查看 target/dist 文件夹");
+        NotifyUtil.notifyInfo(project, "打包成功,请查看 target/dist 文件夹");
     }
 
     /**
@@ -149,7 +156,7 @@ public class ChoiceActionService {
      * @param canonical
      * @return
      */
-    private static List<String> svnDataHandling(String data, String canonical){
+    private static List<String> svnDataHandling(String data, String canonical) {
 
         List<String> list = new ArrayList<>();
 

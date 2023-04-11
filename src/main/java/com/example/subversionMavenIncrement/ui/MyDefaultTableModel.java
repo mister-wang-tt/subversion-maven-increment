@@ -28,7 +28,7 @@ public class MyDefaultTableModel extends DefaultTableModel {
     public void setRowData(List<String> list){
 
         // 过滤不和规则的数据
-        list.removeIf(e -> !e.contains(".") || e.contains("pom.xml") || e.contains("pom.jar") || e.contains("application.properties"));
+        list.removeIf(e -> !e.contains(".") || e.contains("pom.xml") || e.contains("pom.jar"));
 
         rowData = new Object[list.size()][];
 

@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "com.example"
-version = "1.0-SNAPSHOT"
+version = "1.1.0"
 
 repositories {
     mavenLocal()
@@ -16,7 +16,7 @@ dependencies {
 //    implementation("com.alibaba.fastjson2:fastjson2:2.0.20")
     implementation("commons-io:commons-io:2.11.0")
     implementation("org.apache.commons:commons-compress:1.22")
-
+    implementation("org.dom4j:dom4j:2.1.4")
 }
 
 // Configure Gradle IntelliJ Plugin
