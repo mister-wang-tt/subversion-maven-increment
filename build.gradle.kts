@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "com.example"
-version = "1.1.0"
+version = "1.2.0"
 
 repositories {
     mavenLocal()
@@ -13,7 +13,6 @@ repositories {
 }
 
 dependencies {
-//    implementation("com.alibaba.fastjson2:fastjson2:2.0.20")
     implementation("commons-io:commons-io:2.11.0")
     implementation("org.apache.commons:commons-compress:1.22")
     implementation("org.dom4j:dom4j:2.1.4")
@@ -22,7 +21,7 @@ dependencies {
 // Configure Gradle IntelliJ Plugin
 // Read more: https://plugins.jetbrains.com/docs/intellij/tools-gradle-intellij-plugin.html
 intellij {
-    version.set("2021.3")
+    version.set("2020.3")
     type.set("IC") // Target IDE Platform
 
     plugins.set(listOf())
@@ -37,7 +36,7 @@ tasks {
     }
 
     patchPluginXml {
-        sinceBuild.set("213")
+        sinceBuild.set("203")
         untilBuild.set("223.*")
     }
 

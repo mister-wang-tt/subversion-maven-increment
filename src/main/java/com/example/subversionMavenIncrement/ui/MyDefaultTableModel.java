@@ -15,7 +15,7 @@ public class MyDefaultTableModel extends DefaultTableModel {
     /**
      * 表头
      */
-    private final Object[] columnNames = {"是否选择", "文件"};
+    private final Object[] columnNames = {"是否选择(Selected)", "文件(file)"};
 
     /**
      * 数据

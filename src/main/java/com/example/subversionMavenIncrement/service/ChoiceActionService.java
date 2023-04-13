@@ -1,25 +1,29 @@
 package com.example.subversionMavenIncrement.service;
 
+import com.example.subversionMavenIncrement.StaticValue;
 import com.example.subversionMavenIncrement.run.ExecuteCommand;
+import com.example.subversionMavenIncrement.util.FileUtil;
 import com.example.subversionMavenIncrement.util.NotifyUtil;
 import com.example.subversionMavenIncrement.util.WarUtil;
 import com.intellij.openapi.actionSystem.DataContext;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
-import com.intellij.openapi.vcs.FilePath;
 import com.intellij.openapi.vcs.RepositoryLocation;
-import com.intellij.openapi.vcs.actions.VcsContextUtil;
 import com.intellij.openapi.vcs.history.VcsFileRevision;
-import com.intellij.openapi.vfs.VirtualFile;
-import com.intellij.peer.impl.VcsContextFactoryImpl;
+import com.intellij.openapi.vcs.vfs.VcsVirtualFolder;
 import org.apache.commons.compress.archivers.ArchiveException;
+import org.apache.commons.lang.StringUtils;
+import org.dom4j.*;
+import org.dom4j.io.SAXReader;
 
-import java.io.File;
-import java.io.IOException;
+import java.awt.*;
+import java.io.*;
+
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -71,15 +75,27 @@ public class ChoiceActionService {
      * @param svnSubmitData
      * @param isMvnRadioButton
      */
-    public static void backEnd(Project project, DataContext dataContext, List<String> svnSubmitData, Boolean isMvnRadioButton) {
+    public static void backEnd(Project project, DataContext dataContext, List<String> svnSubmitData, Boolean isMvnRadioButton, Boolean packButtonYes) {
 
-        VirtualFile virtualFile = VcsContextUtil.selectedFile(dataContext);
-        FilePath filePathOn = new VcsContextFactoryImpl().createFilePathOn(virtualFile);
+        VcsVirtualFolder filePathOn = (VcsVirtualFolder)dataContext.getData("VCS_VIRTUAL_FILE");
 
         // 是否使用maven打包
         if (isMvnRadioButton) {
             try {
-                ExecuteCommand.carrOut(filePathOn.getIOFile(), "mvn clean package",
+
+                // 先找本机 maven，没有找到在使用环境变量 mvn 命令
+                String mavenPath = obtainMaven(filePathOn.getPath());
+                if(StringUtils.isEmpty(mavenPath)) {
+                    mavenPath = "mvn";
+                }else {
+                    mavenPath += "mvn";
+                    String os = System.getProperty("os.name");
+                    if (os != null && os.toUpperCase().contains(StaticValue.WINDOWS.toString())) {
+                        mavenPath += ".cmd";
+                    }
+                }
+
+                ExecuteCommand.carrOut(new File(filePathOn.getPath()), mavenPath + " clean package",
                         "-Dmaven.test.skip=true");
                 NotifyUtil.notifyInfo(project, "maven打包完成,请稍后！");
             } catch (IOException | InterruptedException e) {
@@ -112,7 +128,7 @@ public class ChoiceActionService {
         // 解压war包
         try {
             File tempFile = new File(temporaryFile + CO_WAR_PATH);
-            tempFile.delete();
+            FileUtil.deleteDirectoryStream(tempFile.getPath());
 
             WarUtil.unCompressWar(warList.get(0), temporaryFile + CO_WAR_PATH);
         } catch (IOException | ArchiveException e) {
@@ -122,25 +138,38 @@ public class ChoiceActionService {
 
         String dist = temporaryFile + File.separator + "dist";
 
-        new File(dist).delete();
+        FileUtil.deleteDirectoryStream(dist);
 
         try {
             // 只移动 resources 和 src
             for (String path : svnSubmitData) {
 
                 for (String fold : PACKAGING_FOLDER) {
-                    if (path.contains(fold) && path.contains(".")) {
-                        String[] paths = path.split(fold);
-                        paths[1] = paths[1].replace(".java", ".class");
+                    String[] paths = path.split(fold);
 
-                        if (!new File(dist + WEB_INF_CASS_PATH + paths[1]).exists()) {
-                            Files.createDirectories(Path.of(dist + WEB_INF_CASS_PATH + paths[1]).getParent());
-                            Files.copy(Path.of(temporaryFile + CO_WAR_PATH + WEB_INF_CASS_PATH + paths[1]),
-                                    Path.of(dist + WEB_INF_CASS_PATH + paths[1]));
+                    // 文件打包
+                    if(!packButtonYes) {
+                        if (path.contains(fold) && path.contains(".")) {
+                            paths[1] = paths[1].replace(".java", ".class");
+
+                            if (!new File(dist + WEB_INF_CASS_PATH + paths[1]).exists()) {
+                                Files.createDirectories(Path.of(dist + WEB_INF_CASS_PATH + paths[1]).getParent());
+                                Files.copy(Path.of(temporaryFile + CO_WAR_PATH + WEB_INF_CASS_PATH + paths[1]),
+                                        Path.of(dist + WEB_INF_CASS_PATH + paths[1]));
+                            }
+                        }
+                    }
+                    // 文件夹打包
+                    else {
+                        if (path.contains(fold)) {
+                            FileUtil.copyFolder(Paths.get(temporaryFile + CO_WAR_PATH + WEB_INF_CASS_PATH + paths[1]).getParent().toFile(), Paths.get(dist + WEB_INF_CASS_PATH + paths[1]).getParent().toFile());
                         }
                     }
                 }
             }
+
+            // 生成完后打开文件夹
+            Desktop.getDesktop().open(new File(dist));
         } catch (IOException e) {
             NotifyUtil.notifyError(project, "生成更新包失败！" + Messages.getInformationIcon());
             throw new RuntimeException(e);
@@ -168,6 +197,85 @@ public class ChoiceActionService {
             list.add(substring);
         }
         return list;
+    }
+
+    /**
+     * 获取 idea配置的本机Maven 地址
+     *
+     * @param filePathOn
+     * @return
+     * @throws DocumentException
+     */
+    private static String obtainMaven(String filePathOn) {
+
+        String mavenPath = null;
+        String userSettingsFile = null;
+
+        try {
+            SAXReader reader = new SAXReader();
+            // 加载xml文件
+            Document dc= reader.read(new File(filePathOn + File.separator + ".idea" + File.separator + "workspace.xml"));
+
+            // 获取根节点
+            Element e = dc.getRootElement();
+
+            Element mavenImportPreferences = null;
+
+            // 查找 MavenImportPreferences
+            mi:
+            for (Iterator<Element> i = e.elementIterator("component"); i.hasNext();) {
+                Element works = (Element) i.next();
+                for (Attribute att : works.attributes()) {
+                    if("MavenImportPreferences".equals(att.getValue())){
+                        mavenImportPreferences = works;
+                        break mi;
+                    }
+                }
+            }
+
+
+            if(null == mavenImportPreferences){
+                return mavenPath;
+            }
+
+            Element generalSettings = null;
+            mi:
+            for (Iterator<Element> i = mavenImportPreferences.elementIterator("option"); i.hasNext();) {
+                Element option = (Element) i.next();
+                for (Attribute att : option.attributes()) {
+                    if("generalSettings".equals(att.getValue())){
+                        generalSettings = option;
+                        break mi;
+                    }
+                }
+            }
+
+            if(null == generalSettings){
+                return mavenPath;
+            }
+
+            Element mavenGeneralSettings = generalSettings.element("MavenGeneralSettings");
+            mi:
+            for (Iterator<Element> i = mavenGeneralSettings.elementIterator("option"); i.hasNext();) {
+                Element option = (Element) i.next();
+
+                for (int j= 0; j < option.attributes().size(); j++){
+                    if("userSettingsFile".equals(option.attributes().get(j).getValue())){
+                        userSettingsFile = option.attributes().get(j + 1).getValue();
+                        break mi;
+                    }
+                }
+            }
+
+            if(StringUtils.isNotEmpty(userSettingsFile) && userSettingsFile.contains("conf")) {
+                mavenPath = userSettingsFile.split("conf")[0] + "bin" + File.separator;
+            }
+
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+
+        return mavenPath;
     }
 
 }
