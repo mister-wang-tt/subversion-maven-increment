@@ -5,10 +5,7 @@ import com.example.subversionMavenIncrement.util.NotifyUtil;
 import com.intellij.openapi.actionSystem.DataContext;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
-import com.intellij.openapi.vcs.FilePath;
-import com.intellij.openapi.vcs.actions.VcsContextUtil;
-import com.intellij.openapi.vfs.VirtualFile;
-import com.intellij.peer.impl.VcsContextFactoryImpl;
+import com.intellij.openapi.vcs.vfs.VcsVirtualFolder;
 import org.apache.commons.lang.StringUtils;
 import org.dom4j.Document;
 import org.dom4j.DocumentHelper;
@@ -43,8 +40,7 @@ public class CheckUpService {
 
         RESOLVE_ADDRESS = null;
 
-        VirtualFile virtualFile = VcsContextUtil.selectedFile(dataContext);
-        FilePath filePathOn = new VcsContextFactoryImpl().createFilePathOn(virtualFile);
+        VcsVirtualFolder filePathOn = (VcsVirtualFolder)dataContext.getData("VCS_VIRTUAL_FILE");
 
         CheckUpService checkUpService = new CheckUpService();
 
@@ -89,8 +85,8 @@ public class CheckUpService {
      * @param path
      */
     public void setXml(Project project, DataContext dataContext, String path) {
-        VirtualFile virtualFile = VcsContextUtil.selectedFile(dataContext);
-        FilePath filePathOn = new VcsContextFactoryImpl().createFilePathOn(virtualFile);
+
+        VcsVirtualFolder filePathOn = (VcsVirtualFolder)dataContext.getData("VCS_VIRTUAL_FILE");
 
         RESOLVE_ADDRESS = path;
         createXml(filePathOn.getPath() + File.separator + ".idea" + File.separator + "svnMavenIncrement.xml", path);

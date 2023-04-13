@@ -14,13 +14,18 @@
          Simple HTML elements (text formatting, paragraphs, and lists) can be added inside of <![CDATA[ ]]> tag.
          Guidelines: https://plugins.jetbrains.com/docs/marketplace/plugin-overview-page.html#plugin-description -->
     <description><![CDATA[
+        <h2>1.2.0</h2><br>
+        <em>1.先找本机 maven，没有找到在使用环境变量 mvn 命令<br>
+            2.增加可选择按文件夹打包<br>
+            3.支持2020.3版本</em><br>
+        <em>1. First find the local Maven, but cannot find the command using the environment variable mvn<br>
+            2. Add option to package by folder<br>
+            3. Support 2020.3 version</em>
+        <br>
         <h2>1.1.0</h2><br>
         <em>增加对 多模块Maven结构项目的支持 </em><br>
         <em>Increase support for multi module Maven structure projects</em>
         <br>
-    <h2>1.0.1</h2><br>
-    <em>Subversion Maven Increment The upgrade package is based on the old project monomer maven+war package project. The upgrade package can be automatically generated according to the records submitted by SVN</em><br>
-    <br>
     <a href="https://github.com/mister-wang-tt/subversion-maven-increment">gitHub</a>
         <h3>reliance</h3>
     <div><em>1. Need to rely on SVN and MAVEN</em></div>
