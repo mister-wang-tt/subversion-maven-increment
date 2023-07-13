@@ -27,6 +27,11 @@ public class ExecuteCommand {
      */
     private static final String HEADER_C;
 
+    /**
+     * 获取系统编码格式
+     */
+    public static final String CHARSET = System.getProperty("sun.jnu.encoding");
+
     static {
 
         // 初始化参数
@@ -60,7 +65,7 @@ public class ExecuteCommand {
         Process process;
         if(null == file){
             process = runtime.exec(cmd);
-            return IOUtils.toString(process.getInputStream(), StandardCharsets.UTF_8);
+            return IOUtils.toString(process.getInputStream(), CHARSET);
         }else {
             process = runtime.exec(cmd, null, file);
             InputStream ers= process.getErrorStream();

@@ -8,9 +8,7 @@ import com.example.subversionMavenIncrement.util.WarUtil;
 import com.intellij.openapi.actionSystem.DataContext;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
-import com.intellij.openapi.vcs.RepositoryLocation;
 import com.intellij.openapi.vcs.history.VcsFileRevision;
-import com.intellij.openapi.vcs.history.VcsRevisionNumber;
 import com.intellij.openapi.vcs.vfs.VcsVirtualFolder;
 import org.apache.commons.compress.archivers.ArchiveException;
 import org.apache.commons.lang.StringUtils;
@@ -247,7 +245,7 @@ public class ChoiceActionService {
             // 生成完后打开文件夹
             Desktop.getDesktop().open(new File(dist));
         } catch (IOException e) {
-            NotifyUtil.notifyError(project, "生成更新包失败！" + Messages.getInformationIcon());
+            NotifyUtil.notifyError(project, "生成更新包失败！请查看 target/classes 文件夹是否有文件" + Messages.getInformationIcon());
             throw new RuntimeException(e);
         }
 
