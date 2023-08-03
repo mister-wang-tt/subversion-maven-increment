@@ -2,6 +2,7 @@ package com.example.subversionMavenIncrement.service;
 
 import com.example.subversionMavenIncrement.StaticValue;
 import com.example.subversionMavenIncrement.run.ExecuteCommand;
+import com.example.subversionMavenIncrement.ui.FailPathFormDialog;
 import com.example.subversionMavenIncrement.util.FileUtil;
 import com.example.subversionMavenIncrement.util.NotifyUtil;
 import com.example.subversionMavenIncrement.util.WarUtil;
@@ -15,6 +16,7 @@ import org.apache.commons.lang.StringUtils;
 import org.dom4j.*;
 import org.dom4j.io.SAXReader;
 
+import javax.swing.*;
 import java.awt.*;
 import java.io.*;
 
@@ -55,14 +57,11 @@ public class ChoiceActionService {
     public static List<String> findSvnNotes(DataContext dataContext) throws IOException, InterruptedException {
 
         // 获取选中的svn相关数据 VCS_FILE_REVISIONS -> {VcsFileRevision[4]@54552} VCS_REVISION_NUMBERS -> {VcsRevisionNumber[7]@50905}
-//        VcsRevisionNumber[] vcsRevisionNumbers = (VcsRevisionNumber[]) dataContext.getData("VCS_REVISION_NUMBERS");
         VcsFileRevision[] vcsFileRevisions = (VcsFileRevision[]) dataContext.getData("VCS_FILE_REVISIONS");
-//        VcsFileRevision vcsFileRevision = (VcsFileRevision) dataContext.getData("VCS_FILE_REVISION");
-//        RepositoryLocation changedRepositoryPath = vcsFileRevision.getChangedRepositoryPath();
 
         Set<String> svnRecords = new HashSet<>();
 
-        for(VcsFileRevision vcs : vcsFileRevisions) {
+        for (VcsFileRevision vcs : vcsFileRevisions) {
             // 获取svn提交的历史记录
             String s = ExecuteCommand.carrOut(null, "svn log",
                     vcs.getChangedRepositoryPath().toPresentableString(),
@@ -83,9 +82,12 @@ public class ChoiceActionService {
      * @param svnSubmitData
      * @param isMvnRadioButton
      */
-    public static void backEndWar(Project project, DataContext dataContext, List<String> svnSubmitData, Boolean isMvnRadioButton, Boolean packButtonYes) {
+    public static void backEndWar(Project project, DataContext dataContext, List<String> svnSubmitData, Boolean isMvnRadioButton) {
 
-        VcsVirtualFolder filePathOn = (VcsVirtualFolder)dataContext.getData("VCS_VIRTUAL_FILE");
+        VcsVirtualFolder filePathOn = (VcsVirtualFolder) dataContext.getData("VCS_VIRTUAL_FILE");
+
+        // 打包失败的文件路径
+        List<String> failPaths = new ArrayList<>();
 
         // 是否使用maven打包
         if (isMvnRadioButton) {
@@ -93,9 +95,9 @@ public class ChoiceActionService {
 
                 // 先找本机 maven，没有找到在使用环境变量 mvn 命令
                 String mavenPath = obtainMaven(filePathOn.getPath());
-                if(StringUtils.isEmpty(mavenPath)) {
+                if (StringUtils.isEmpty(mavenPath)) {
                     mavenPath = "mvn";
-                }else {
+                } else {
                     mavenPath += "mvn";
                     String os = System.getProperty("os.name");
                     if (os != null && os.toUpperCase().contains(StaticValue.WINDOWS.toString())) {
@@ -149,17 +151,21 @@ public class ChoiceActionService {
         FileUtil.deleteDirectoryStream(dist);
 
         try {
-            // 只移动 resources 和 src
+            // 只移动 resources 和 src|src/main/java
             for (String path : svnSubmitData) {
 
                 for (String fold : PACKAGING_FOLDER) {
                     String[] paths = path.split(fold);
 
-                    // 文件打包
-                    if(!packButtonYes) {
-                        if (path.contains(fold) && path.contains(".")) {
-                            paths[1] = paths[1].replace(".java", ".class");
+                    if(fold.equals(PACKAGING_FOLDER[1]) && path.contains("/" + PACKAGING_FOLDER[0])) {
+                        continue;
+                    }
 
+                    if (path.contains(fold) && path.contains(".")) {
+                        paths[1] = paths[1].replace(".java", ".class");
+                        processingSvnPath(fold, paths);
+
+                        try {
                             if (!new File(dist + WEB_INF_CASS_PATH + paths[1]).exists()) {
                                 Path parent = Path.of(temporaryFile + CO_WAR_PATH + WEB_INF_CASS_PATH + paths[1]).getParent();
                                 String pathParent = Path.of(dist + WEB_INF_CASS_PATH + paths[1]).getParent().toString();
@@ -170,25 +176,18 @@ public class ChoiceActionService {
                                 // 查找子类文件也加入打包中
                                 subClass(paths, parent, pathParent);
                             }
-                        }
-                    }
-                    // 文件夹打包
-                    else {
-                        if (path.contains(fold)) {
-                            FileUtil.copyFolder(Paths.get(temporaryFile + CO_WAR_PATH + WEB_INF_CASS_PATH + paths[1]).getParent().toFile(), Paths.get(dist + WEB_INF_CASS_PATH + paths[1]).getParent().toFile());
+                        } catch (Exception e) {
+                            failPaths.add(path);
                         }
                     }
                 }
             }
 
-            // 生成完后打开文件夹
-            Desktop.getDesktop().open(new File(dist));
+            packagingComp(project, dist, failPaths);
         } catch (IOException e) {
             NotifyUtil.notifyError(project, "生成更新包失败！" + Messages.getInformationIcon());
             throw new RuntimeException(e);
         }
-
-        NotifyUtil.notifyInfo(project, "打包成功,请查看 target/dist 文件夹");
     }
 
     /**
@@ -198,7 +197,7 @@ public class ChoiceActionService {
      * @param dataContext
      * @param svnSubmitData
      */
-    public static void backEndClasses(Project project, DataContext dataContext, List<String> svnSubmitData, Boolean packButtonYes) {
+    public static void backEndClasses(Project project, DataContext dataContext, List<String> svnSubmitData) {
 
         // 先创建临时时文件夹
         String temporaryFile = CheckUpService.RESOLVE_ADDRESS + File.separator + "target";
@@ -207,6 +206,9 @@ public class ChoiceActionService {
 
         FileUtil.deleteDirectoryStream(dist);
 
+        // 打包失败的文件路径
+        List<String> failPaths = new ArrayList<>();
+
         try {
             // 只移动 resources 和 src
             for (String path : svnSubmitData) {
@@ -214,11 +216,16 @@ public class ChoiceActionService {
                 for (String fold : PACKAGING_FOLDER) {
                     String[] paths = path.split(fold);
 
-                    // 文件打包
-                    if(!packButtonYes) {
-                        if (path.contains(fold) && path.contains(".")) {
-                            paths[1] = paths[1].replace(".java", ".class");
+                    if(fold.equals(PACKAGING_FOLDER[1]) && path.contains("/" + PACKAGING_FOLDER[0])) {
+                        continue;
+                    }
 
+                    if (path.contains(fold) && path.contains(".")) {
+
+                        paths[1] = paths[1].replace(".java", ".class");
+                        processingSvnPath(fold, paths);
+
+                        try {
                             if (!new File(dist + CLASSES + paths[1]).exists()) {
                                 Path parent = Path.of(temporaryFile + CLASSES + paths[1]).getParent();
                                 String pathParent = Path.of(dist + CLASSES + paths[1]).getParent().toString();
@@ -230,26 +237,42 @@ public class ChoiceActionService {
                                 subClass(paths, parent, pathParent);
 
                             }
-                        }
-                    }
-                    // 文件夹打包
-                    else {
-                        if (path.contains(fold)) {
-                            FileUtil.copyFolder(Paths.get(temporaryFile + CLASSES + paths[1]).getParent().toFile(),
-                                    Paths.get(dist + CLASSES + paths[1]).getParent().toFile());
+                        } catch (Exception e) {
+                            failPaths.add(path);
                         }
                     }
                 }
             }
 
-            // 生成完后打开文件夹
-            Desktop.getDesktop().open(new File(dist));
+            packagingComp(project, dist, failPaths);
         } catch (IOException e) {
             NotifyUtil.notifyError(project, "生成更新包失败！请查看 target/classes 文件夹是否有文件" + Messages.getInformationIcon());
             throw new RuntimeException(e);
         }
+    }
 
-        NotifyUtil.notifyInfo(project, "打包成功,请查看 target/dist 文件夹");
+    /**
+     * 打包完成提示
+     *
+     * @param project
+     * @param dist
+     * @param failPaths
+     * @throws IOException
+     */
+    private static void packagingComp(Project project, String dist, List<String> failPaths) throws IOException {
+        // 生成完后打开文件夹
+        Desktop.getDesktop().open(new File(dist));
+
+        if (failPaths.size() == 0) {
+            NotifyUtil.notifyInfo(project, "打包成功,已打开打包好的文件夹，或者请查看 target/dist 文件夹");
+        } else {
+            // 不是主线程执行ui操作，使用 SwingUtilities.invokeLater() 方法
+            SwingUtilities.invokeLater(() -> {
+                FailPathFormDialog failPathFormDialog = new FailPathFormDialog(failPaths, project);
+                failPathFormDialog.setResizable(true);
+                failPathFormDialog.show();
+            });
+        }
     }
 
     /**
@@ -269,7 +292,7 @@ public class ChoiceActionService {
             //截取出括号中的内容
             String substring = matcher.group(1);
 
-            if(substring.contains("(")) {
+            if (substring.contains("(")) {
                 substring = substring.replaceAll("\\s", "");
                 substring = substring.split("\\(")[0];
             }
@@ -290,15 +313,15 @@ public class ChoiceActionService {
     private static void subClass(String[] paths, Path parent, String pathParent) throws IOException {
         // 查找子类文件也加入打包中 只争对.class文件
         String s1 = Path.of(paths[1]).getFileName().toString();
-        if(s1.contains(".class")) {
+        if (s1.contains(".class")) {
             String pathsFileName = s1.replace(".class", "");
             Files.list(parent)
                     .filter(Files::isRegularFile)
                     .forEach(subPath -> {
                         String s = subPath.getFileName().toString();
-                        if(s.contains(".class")) {
+                        if (s.contains(".class")) {
                             String replace = s.replace(".class", "");
-                            if(replace.contains(pathsFileName)
+                            if (replace.contains(pathsFileName)
                                     && !replace.equals(pathsFileName)) {
                                 try {
                                     Files.copy(subPath, Path.of(pathParent + File.separator + s));
@@ -309,6 +332,23 @@ public class ChoiceActionService {
                         }
                     });
         }
+    }
+
+    /**
+     * 处理svn路径
+     *
+     * @param fold
+     * @param paths
+     */
+    private static void processingSvnPath(String fold, String[] paths) {
+
+        if (PACKAGING_FOLDER[1].equals(fold)) {
+            String substring = paths[1].substring(0, 10);
+            if ("/main/java".equals(substring)) {
+                paths[1] = paths[1].substring(10);
+            }
+        }
+
     }
 
     /**
@@ -326,7 +366,7 @@ public class ChoiceActionService {
         try {
             SAXReader reader = new SAXReader();
             // 加载xml文件
-            Document dc= reader.read(new File(filePathOn + File.separator + ".idea" + File.separator + "workspace.xml"));
+            Document dc = reader.read(new File(filePathOn + File.separator + ".idea" + File.separator + "workspace.xml"));
 
             // 获取根节点
             Element e = dc.getRootElement();
@@ -335,10 +375,10 @@ public class ChoiceActionService {
 
             // 查找 MavenImportPreferences
             mi:
-            for (Iterator<Element> i = e.elementIterator("component"); i.hasNext();) {
+            for (Iterator<Element> i = e.elementIterator("component"); i.hasNext(); ) {
                 Element works = (Element) i.next();
                 for (Attribute att : works.attributes()) {
-                    if("MavenImportPreferences".equals(att.getValue())){
+                    if ("MavenImportPreferences".equals(att.getValue())) {
                         mavenImportPreferences = works;
                         break mi;
                     }
@@ -346,44 +386,44 @@ public class ChoiceActionService {
             }
 
 
-            if(null == mavenImportPreferences){
+            if (null == mavenImportPreferences) {
                 return mavenPath;
             }
 
             Element generalSettings = null;
             mi:
-            for (Iterator<Element> i = mavenImportPreferences.elementIterator("option"); i.hasNext();) {
+            for (Iterator<Element> i = mavenImportPreferences.elementIterator("option"); i.hasNext(); ) {
                 Element option = (Element) i.next();
                 for (Attribute att : option.attributes()) {
-                    if("generalSettings".equals(att.getValue())){
+                    if ("generalSettings".equals(att.getValue())) {
                         generalSettings = option;
                         break mi;
                     }
                 }
             }
 
-            if(null == generalSettings){
+            if (null == generalSettings) {
                 return mavenPath;
             }
 
             Element mavenGeneralSettings = generalSettings.element("MavenGeneralSettings");
             mi:
-            for (Iterator<Element> i = mavenGeneralSettings.elementIterator("option"); i.hasNext();) {
+            for (Iterator<Element> i = mavenGeneralSettings.elementIterator("option"); i.hasNext(); ) {
                 Element option = (Element) i.next();
 
-                for (int j= 0; j < option.attributes().size(); j++){
-                    if("userSettingsFile".equals(option.attributes().get(j).getValue())){
+                for (int j = 0; j < option.attributes().size(); j++) {
+                    if ("userSettingsFile".equals(option.attributes().get(j).getValue())) {
                         userSettingsFile = option.attributes().get(j + 1).getValue();
                         break mi;
                     }
                 }
             }
 
-            if(StringUtils.isNotEmpty(userSettingsFile) && userSettingsFile.contains("conf")) {
+            if (StringUtils.isNotEmpty(userSettingsFile) && userSettingsFile.contains("conf")) {
                 mavenPath = userSettingsFile.split("conf")[0] + "bin" + File.separator;
             }
 
-        }catch (Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
         }
 

@@ -23,8 +23,6 @@ public class SvnToolWindow {
     private JTable table;
     private JScrollPane scrollPane;
     private JRadioButton isMvnRadioButtonNo;
-//    private JRadioButton packButtonYes;
-//    private JRadioButton packButtonNo;
     private JRadioButton classesRadioButton;
     private JRadioButton warRadioButton;
 
@@ -55,9 +53,9 @@ public class SvnToolWindow {
 
         MyThreadPoolExecutor.INSTANCE.getThreadPoolExecutor().submit(() -> {
             if(warRadioButton.isSelected()) {
-                ChoiceActionService.backEndWar(project, dataContext, list, isMvnRadioButton.isSelected(), false);
+                ChoiceActionService.backEndWar(project, dataContext, list, isMvnRadioButton.isSelected());
             }else {
-                ChoiceActionService.backEndClasses(project, dataContext, list, false);
+                ChoiceActionService.backEndClasses(project, dataContext, list);
             }
         });
 
